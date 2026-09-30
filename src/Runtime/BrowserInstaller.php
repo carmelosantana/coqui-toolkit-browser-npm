@@ -17,6 +17,7 @@ final class BrowserInstaller
 
     public function __construct(
         private readonly string $browserDir,
+        private readonly string $browsersPath = '',
     ) {}
 
     /**
@@ -103,7 +104,7 @@ final class BrowserInstaller
         }
 
         // Use npx playwright (not playwright-cli) to download browser binaries
-        $browserResult = $this->runInDir('npx playwright install chromium 2>&1');
+        $browserResult = $this->runInDir('npx playwright install chromium 2>&1', $this->buildBrowserEnv());
 
         // Create config so playwright-cli daemon uses bundled chromium,
         // not Google Chrome (which may not be installed on the system).
@@ -148,7 +149,10 @@ final class BrowserInstaller
             ];
         }
 
-        $result = $this->runInDir(escapeshellarg($binary) . ' install --with-deps chromium 2>&1');
+        $result = $this->runInDir(
+            escapeshellarg($binary) . ' install --with-deps chromium 2>&1',
+            $this->buildBrowserEnv(),
+        );
 
         return [
             'success' => $result['exit_code'] === 0,
@@ -194,9 +198,26 @@ final class BrowserInstaller
     }
 
     /**
+     * Build environment variables for browser install commands.
+     *
+     * @return array<string, string>|null
+     */
+    private function buildBrowserEnv(): ?array
+    {
+        if ($this->browsersPath === '') {
+            return null;
+        }
+
+        return array_merge(getenv(), [
+            'PLAYWRIGHT_BROWSERS_PATH' => $this->browsersPath,
+        ]);
+    }
+
+    /**
+     * @param array<string, string>|null $env
      * @return array{exit_code: int, output: string}
      */
-    private function runInDir(string $command): array
+    private function runInDir(string $command, ?array $env = null): array
     {
         $descriptors = [
             0 => ['pipe', 'r'],
@@ -204,7 +225,7 @@ final class BrowserInstaller
             2 => ['pipe', 'w'],
         ];
 
-        $process = proc_open($command, $descriptors, $pipes, $this->browserDir);
+        $process = proc_open($command, $descriptors, $pipes, $this->browserDir, $env);
 
         if (!is_resource($process)) {
             return ['exit_code' => 1, 'output' => 'Failed to start process.'];

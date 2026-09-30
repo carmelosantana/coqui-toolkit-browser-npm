@@ -17,10 +17,12 @@ final class PlaywrightRunner
 
     private string $browserDir;
     private string $resolvedBinary = '';
+    private string $resolvedBrowsersPath = '';
 
     public function __construct(
         private readonly string $workspacePath,
         private readonly string $defaultSession = '',
+        private readonly string $browsersPath = '',
     ) {
         $this->browserDir = rtrim($this->workspacePath, '/') . '/browser';
     }
@@ -123,11 +125,68 @@ final class PlaywrightRunner
     }
 
     /**
+     * Resolve the browser installation directory.
+     *
+     * Checks (in order):
+     * 1. Explicit path passed via constructor (from credential/env override)
+     * 2. Already-set PLAYWRIGHT_BROWSERS_PATH environment variable
+     * 3. Platform-specific default: macOS uses ~/Library/Caches/ms-playwright,
+     *    Linux/other uses ~/.cache/ms-playwright
+     *
+     * Falls back to letting Playwright auto-detect if no path is found.
+     */
+    public function resolveBrowsersPath(): string
+    {
+        if ($this->resolvedBrowsersPath !== '') {
+            return $this->resolvedBrowsersPath;
+        }
+
+        // 1. Explicit override from constructor (credential system / env)
+        if ($this->browsersPath !== '') {
+            $this->resolvedBrowsersPath = $this->browsersPath;
+            return $this->resolvedBrowsersPath;
+        }
+
+        // 2. Already set in process environment
+        $envPath = getenv('PLAYWRIGHT_BROWSERS_PATH');
+        if ($envPath !== false && $envPath !== '' && is_dir($envPath)) {
+            $this->resolvedBrowsersPath = $envPath;
+            return $this->resolvedBrowsersPath;
+        }
+
+        // 3. Platform-specific auto-detection
+        $home = $_SERVER['HOME'] ?? getenv('HOME') ?: '/root';
+
+        if (PHP_OS_FAMILY === 'Darwin') {
+            // macOS: Playwright uses ~/Library/Caches/ms-playwright
+            $macPath = $home . '/Library/Caches/ms-playwright';
+            if (is_dir($macPath)) {
+                $this->resolvedBrowsersPath = $macPath;
+                return $this->resolvedBrowsersPath;
+            }
+        }
+
+        // Linux / fallback: ~/.cache/ms-playwright
+        $linuxPath = $home . '/.cache/ms-playwright';
+        if (is_dir($linuxPath)) {
+            $this->resolvedBrowsersPath = $linuxPath;
+            return $this->resolvedBrowsersPath;
+        }
+
+        // Return platform-appropriate default even if dir doesn't exist yet
+        // (it will be created by `playwright install`)
+        $this->resolvedBrowsersPath = PHP_OS_FAMILY === 'Darwin' ? ($home . '/Library/Caches/ms-playwright') : $linuxPath;
+
+        return $this->resolvedBrowsersPath;
+    }
+
+    /**
      * Clear the cached binary path (forces re-resolution on next call).
      */
     public function clearBinaryCache(): void
     {
         $this->resolvedBinary = '';
+        $this->resolvedBrowsersPath = '';
     }
 
     private function resolveSession(string $session): string
@@ -190,12 +249,12 @@ final class PlaywrightRunner
             2 => ['pipe', 'w'],
         ];
 
-        // Inherit full environment so Playwright can find browsers at $HOME/.cache/ms-playwright/.
-        // Only set cwd to browserDir (below) — that's sufficient for config file resolution.
+        // Inherit full environment and set PLAYWRIGHT_BROWSERS_PATH so Playwright
+        // finds downloaded browsers. Uses platform-aware resolution (macOS vs Linux).
         $env = null;
         if (is_dir($envDir)) {
             $env = array_merge(getenv(), [
-                'PLAYWRIGHT_BROWSERS_PATH' => ($_SERVER['HOME'] ?? getenv('HOME') ?: '/root') . '/.cache/ms-playwright',
+                'PLAYWRIGHT_BROWSERS_PATH' => $this->resolveBrowsersPath(),
             ]);
         }
 
