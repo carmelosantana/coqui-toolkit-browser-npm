@@ -1,5 +1,16 @@
 # Coqui Browser Toolkit
 
+> Deprecated: this npm-backed toolkit has been superseded by `carmelosantana/coqui-browser`, which uses the Playwright PHP library directly.
+
+If you are adopting the new toolkit, remove this package first to avoid confusion between two browser toolkits:
+
+```bash
+composer remove coquibot/coqui-toolkit-browser
+composer require carmelosantana/coqui-browser
+```
+
+The new toolkit writes artifacts under `.workspace/browser-playwright/` and supports multi-tab page management, storage-state workflows, and a richer Playwright-native runtime.
+
 Browser automation toolkit for [Coqui](https://github.com/AgentCoqui/coqui). Wraps [playwright-cli](https://github.com/anthropics/playwright-cli) to give agents full web browsing capabilities including navigation, page interaction, screenshots, cookie/storage management, and session control.
 
 ## Requirements
