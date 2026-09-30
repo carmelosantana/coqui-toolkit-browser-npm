@@ -43,14 +43,20 @@
     },
     "scripts": {
         "test": "pest",
-        "analyse": "phpstan analyse"
+        "analyse": "phpstan analyse --memory-limit=1G"
     },
     "extra": {
         "php-agents": {
             "toolkits": [
                 "CoquiBot\\Toolkits\\Browser\\BrowserToolkit"
             ],
-            "description": "Browser automation — web browsing, page interaction, and data extraction via playwright-cli"
+            "description": "Browser automation — web browsing, page interaction, and data extraction via playwright-cli",
+            "credentials": {
+                "PLAYWRIGHT_BROWSERS_PATH": {
+                    "description": "Override path to Playwright browser binaries. Auto-detected on macOS and Linux if not set.",
+                    "required": false
+                }
+            }
         }
     },
     "minimum-stability": "dev",

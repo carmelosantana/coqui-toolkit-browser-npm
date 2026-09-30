@@ -137,6 +137,8 @@ final class BrowserSessionTool implements ToolInterface
         $output .= "**Default session:** `" . $this->runner->defaultSession() . "`\n";
         $output .= "**Browser directory:** " . $this->runner->browserDir() . "\n";
 
+        $output .= "**Browsers path:** " . $this->runner->resolveBrowsersPath() . "\n";
+
         if ($installed) {
             // Check if binary resolves
             $binary = $this->runner->resolveBinary();

@@ -29,10 +29,11 @@ final class BrowserToolkit implements ToolkitInterface
         private readonly string $workspacePath,
         ?PlaywrightRunner $runner = null,
         ?BrowserInstaller $installer = null,
+        string $browsersPath = '',
     ) {
-        $this->runner = $runner ?? new PlaywrightRunner($workspacePath);
+        $this->runner = $runner ?? new PlaywrightRunner($workspacePath, browsersPath: $browsersPath);
         $browserDir = $this->runner->browserDir();
-        $this->installer = $installer ?? new BrowserInstaller($browserDir);
+        $this->installer = $installer ?? new BrowserInstaller($browserDir, browsersPath: $this->runner->resolveBrowsersPath());
     }
 
     /**
@@ -45,7 +46,12 @@ final class BrowserToolkit implements ToolkitInterface
             $workspacePath = getcwd() . '/.workspace';
         }
 
-        return new self(workspacePath: $workspacePath);
+        $browsersPath = getenv('PLAYWRIGHT_BROWSERS_PATH');
+        if ($browsersPath === false) {
+            $browsersPath = '';
+        }
+
+        return new self(workspacePath: $workspacePath, browsersPath: $browsersPath);
     }
 
     public function tools(): array
